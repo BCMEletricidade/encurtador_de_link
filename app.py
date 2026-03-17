@@ -3,13 +3,20 @@ import string
 import random
 import psycopg2
 from flask import Flask, request, redirect, jsonify, render_template
+from dotenv import load_dotenv
+
+
+load_dotenv()
 
 app = Flask(__name__)
 
 DATABASE_URL = os.getenv("DATABASE_URL")
 
 def get_conn():
-    return psycopg2.connect(DATABASE_URL)
+    return psycopg2.connect(
+        DATABASE_URL,
+        sslmode='require'  # 🔥 obrigatório pro Supabase
+    )
 
 def gerar_codigo(tamanho=6):
     caracteres = string.ascii_letters + string.digits
@@ -18,9 +25,13 @@ def gerar_codigo(tamanho=6):
 def get_dominio():
     try:
         with open("dominio.txt", "r") as f:
-            return f.read().strip()
+            dominio = f.read().strip()
+            if dominio:
+                return dominio
     except:
-        return request.host_url  # fallback
+        pass
+    
+    return request.host_url
 
 @app.route("/")
 def home():
@@ -38,6 +49,9 @@ def encurtar():
 
         if not url:
             return jsonify({"erro": "URL obrigatória"}), 400
+        
+        if not url.startswith("http"):
+            url = "https://" + url
 
         if codigo_personalizado:
             codigo = codigo_personalizado.lower().replace(" ", "_")
@@ -68,7 +82,7 @@ def encurtar():
         print("ERRO BACKEND:", str(e))
         return jsonify({"erro": str(e)}), 500
     
-    
+
 # 📊 LISTAR LINKS
 @app.route("/links")
 def listar_links():
@@ -128,6 +142,23 @@ def redirecionar(codigo):
         return redirect(url)
 
     return "Link não encontrado", 404
+
+@app.route("/excluir/<codigo>", methods=["DELETE"])
+def excluir(codigo):
+    try:
+        conn = get_conn()
+        cur = conn.cursor()
+
+        cur.execute("DELETE FROM urls WHERE codigo = %s", (codigo,))
+        conn.commit()
+
+        cur.close()
+        conn.close()
+
+        return jsonify({"msg": "Excluído com sucesso"})
+
+    except Exception as e:
+        return jsonify({"erro": str(e)}), 500
 
 if __name__ == "__main__":
     app.run()

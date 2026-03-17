@@ -6,43 +6,110 @@
 
 <style>
 body {
-    font-family: Arial;
-    background: #0f172a;
+    font-family: 'Segoe UI', sans-serif;
+    background: linear-gradient(135deg, #0f172a, #1e293b);
     color: white;
     text-align: center;
     padding: 30px;
 }
 
+.container {
+    max-width: 900px;
+    margin: auto;
+}
+
+.card {
+    background: #0f172a;
+    padding: 25px;
+    border-radius: 12px;
+    box-shadow: 0 0 25px rgba(0,0,0,0.4);
+}
+
 input {
-    padding: 10px;
-    margin: 5px;
-    width: 320px;
-    border-radius: 5px;
+    padding: 12px;
+    margin: 8px;
+    width: 90%;
+    border-radius: 8px;
     border: none;
 }
 
 button {
-    padding: 10px 20px;
     cursor: pointer;
-    background: #22c55e;
     border: none;
+    border-radius: 8px;
+    font-weight: bold;
+}
+
+.btn-main {
+    background: #22c55e;
     color: white;
-    border-radius: 5px;
+    padding: 12px 20px;
+    margin-top: 10px;
 }
 
 table {
-    margin: 30px auto;
+    margin-top: 30px;
     border-collapse: collapse;
-    width: 90%;
+    width: 100%;
+    background: #0f172a;
+    border-radius: 10px;
+    overflow: hidden;
 }
 
 th, td {
-    border: 1px solid #444;
-    padding: 10px;
+    padding: 12px;
+    border-bottom: 1px solid #1e293b;
+    text-align: center;
 }
 
 th {
     background: #1e293b;
+}
+
+a {
+    color: #38bdf8;
+    text-decoration: none;
+}
+
+/* 🔥 LINKS GRANDES */
+.link-curto {
+    max-width: 250px;
+    display: inline-block;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* 🔥 BOTÕES PADRONIZADOS */
+.actions {
+    display: flex;
+    gap: 6px;
+    justify-content: center;
+}
+
+.btn {
+    width: 80px;
+    height: 36px;
+    border-radius: 6px;
+    font-size: 13px;
+}
+
+.btn-copy {
+    background: #3b82f6;
+    color: white;
+}
+
+.btn-copy:hover {
+    background: #2563eb;
+}
+
+.btn-delete {
+    background: #ef4444;
+    color: white;
+}
+
+.btn-delete:hover {
+    background: #dc2626;
 }
 </style>
 
@@ -50,20 +117,21 @@ th {
 
 <body>
 
-<h1>🔗 Encurtador</h1>
+<div class="container">
+
+<div class="card">
+<h1>🔗 Encurtador de Links</h1>
 
 <p><b>Domínio:</b> {{ dominio }}</p>
 
-<input id="nome" placeholder="Nome (ex: Cliente XP)">
-<br>
+<input id="nome" placeholder="Nome">
 <input id="url" placeholder="URL original">
-<br>
-<input id="codigo" placeholder="Caminho personalizado (ex: dashboard_cliente)">
-<br>
+<input id="codigo" placeholder="Caminho personalizado">
 
-<button onclick="encurtar()">Gerar Link</button>
+<button class="btn-main" onclick="encurtar()">Gerar Link</button>
 
-<p id="resultado"></p>
+<div id="resultado"></div>
+</div>
 
 <h2>Links criados</h2>
 
@@ -71,14 +139,23 @@ th {
 <thead>
 <tr>
 <th>Nome</th>
-<th>Link</th>
+<th>Original</th>
+<th>Encurtado</th>
 <th>Cliques</th>
+<th>Ação</th>
 </tr>
 </thead>
 <tbody id="tabela"></tbody>
 </table>
 
+</div>
+
 <script>
+
+function cortarLink(link, tamanho = 40) {
+    if (link.length <= tamanho) return link;
+    return link.substring(0, tamanho) + "...";
+}
 
 async function encurtar() {
     const nome = document.getElementById("nome").value;
@@ -93,12 +170,15 @@ async function encurtar() {
 
     const data = await res.json();
 
-    if (data.erro) {
-        alert(data.erro);
+    if (!res.ok) {
+        alert(data.erro || "Erro");
         return;
     }
 
-    document.getElementById("resultado").innerText = data.short_url;
+    document.getElementById("resultado").innerHTML = `
+        <p>✅ Link criado:</p>
+        <a href="${data.short_url}" target="_blank">${data.short_url}</a>
+    `;
 
     carregarLinks();
 }
@@ -114,15 +194,54 @@ async function carregarLinks() {
         tabela.innerHTML += `
             <tr>
                 <td>${link.nome || "-"}</td>
+
                 <td>
-                    <a href="/${link.codigo}" target="_blank">
-                        ${link.short}
+                    <a class="link-curto" href="${link.url}" target="_blank" title="${link.url}">
+                        ${cortarLink(link.url)}
                     </a>
                 </td>
+
+                <td>
+                    <a class="link-curto" href="/${link.codigo}" target="_blank" title="${link.short}">
+                        ${cortarLink(link.short)}
+                    </a>
+                </td>
+
                 <td>${link.cliques}</td>
+
+                <td>
+                    <div class="actions">
+                        <button class="btn btn-copy" onclick="copiar('${link.short}')">
+                            Copiar
+                        </button>
+                        <button class="btn btn-delete" onclick="excluir('${link.codigo}')">
+                            Excluir
+                        </button>
+                    </div>
+                </td>
             </tr>
         `;
     });
+}
+
+function copiar(texto) {
+    navigator.clipboard.writeText(texto);
+    alert("Copiado!");
+}
+
+async function excluir(codigo) {
+    if (!confirm("Excluir link?")) return;
+
+    const res = await fetch(`/excluir/${codigo}`, {
+        method: "DELETE"
+    });
+
+    if (!res.ok) {
+        alert("Erro ao excluir");
+        return;
+    }
+
+    carregarLinks();
 }
 
 carregarLinks();
