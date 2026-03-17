@@ -3,10 +3,10 @@ import string
 import random
 import psycopg2
 from flask import Flask, request, redirect, jsonify, render_template
-from dotenv import load_dotenv
+#from dotenv import load_dotenv
 
 
-load_dotenv()
+#load_dotenv()
 
 app = Flask(__name__)
 
