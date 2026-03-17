@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<title>Encurtador</title>
+
+<style>
+body {
+    font-family: Arial;
+    background: #0f172a;
+    color: white;
+    text-align: center;
+    padding: 30px;
+}
+
+input {
+    padding: 10px;
+    margin: 5px;
+    width: 320px;
+    border-radius: 5px;
+    border: none;
+}
+
+button {
+    padding: 10px 20px;
+    cursor: pointer;
+    background: #22c55e;
+    border: none;
+    color: white;
+    border-radius: 5px;
+}
+
+table {
+    margin: 30px auto;
+    border-collapse: collapse;
+    width: 90%;
+}
+
+th, td {
+    border: 1px solid #444;
+    padding: 10px;
+}
+
+th {
+    background: #1e293b;
+}
+</style>
+
+</head>
+
+<body>
+
+<h1>🔗 Encurtador</h1>
+
+<p><b>Domínio:</b> {{ dominio }}</p>
+
+<input id="nome" placeholder="Nome (ex: Cliente XP)">
+<br>
+<input id="url" placeholder="URL original">
+<br>
+<input id="codigo" placeholder="Caminho personalizado (ex: dashboard_cliente)">
+<br>
+
+<button onclick="encurtar()">Gerar Link</button>
+
+<p id="resultado"></p>
+
+<h2>Links criados</h2>
+
+<table>
+<thead>
+<tr>
+<th>Nome</th>
+<th>Link</th>
+<th>Cliques</th>
+</tr>
+</thead>
+<tbody id="tabela"></tbody>
+</table>
+
+<script>
+
+async function encurtar() {
+    const nome = document.getElementById("nome").value;
+    const url = document.getElementById("url").value;
+    const codigo = document.getElementById("codigo").value;
+
+    const res = await fetch("/encurtar", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({ nome, url, codigo })
+    });
+
+    const data = await res.json();
+
+    if (data.erro) {
+        alert(data.erro);
+        return;
+    }
+
+    document.getElementById("resultado").innerText = data.short_url;
+
+    carregarLinks();
+}
+
+async function carregarLinks() {
+    const res = await fetch("/links");
+    const data = await res.json();
+
+    const tabela = document.getElementById("tabela");
+    tabela.innerHTML = "";
+
+    data.forEach(link => {
+        tabela.innerHTML += `
+            <tr>
+                <td>${link.nome || "-"}</td>
+                <td>
+                    <a href="/${link.codigo}" target="_blank">
+                        ${link.short}
+                    </a>
+                </td>
+                <td>${link.cliques}</td>
+            </tr>
+        `;
+    });
+}
+
+carregarLinks();
+
+</script>
+
+</body>
+</html>
