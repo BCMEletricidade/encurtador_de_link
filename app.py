@@ -27,43 +27,48 @@ def home():
     dominio = get_dominio()
     return render_template("index.html", dominio=dominio)
 
-# 🔗 CRIAR LINK
 @app.route("/encurtar", methods=["POST"])
 def encurtar():
-    data = request.get_json()
+    try:
+        data = request.get_json()
 
-    url = data.get("url")
-    nome = data.get("nome")
-    codigo_personalizado = data.get("codigo")
+        url = data.get("url")
+        nome = data.get("nome")
+        codigo_personalizado = data.get("codigo")
 
-    if not codigo_personalizado:
-        codigo = gerar_codigo()
-    else:
-        codigo = codigo_personalizado.lower().replace(" ", "_")
+        if not url:
+            return jsonify({"erro": "URL obrigatória"}), 400
 
-    conn = get_conn()
-    cur = conn.cursor()
+        if codigo_personalizado:
+            codigo = codigo_personalizado.lower().replace(" ", "_")
+        else:
+            codigo = gerar_codigo()
 
-    # evita duplicado
-    cur.execute("SELECT 1 FROM urls WHERE codigo = %s", (codigo,))
-    if cur.fetchone():
-        return jsonify({"erro": "Código já existe"}), 400
+        conn = get_conn()
+        cur = conn.cursor()
 
-    cur.execute(
-        "INSERT INTO urls (codigo, url_original, nome) VALUES (%s, %s, %s)",
-        (codigo, url, nome)
-    )
+        cur.execute("SELECT 1 FROM urls WHERE codigo = %s", (codigo,))
+        if cur.fetchone():
+            return jsonify({"erro": "Código já existe"}), 400
 
-    conn.commit()
-    cur.close()
-    conn.close()
+        cur.execute(
+            "INSERT INTO urls (codigo, url_original, nome) VALUES (%s, %s, %s)",
+            (codigo, url, nome)
+        )
 
-    dominio = get_dominio()
+        conn.commit()
+        cur.close()
+        conn.close()
 
-    return jsonify({
-        "short_url": f"{dominio}{codigo}"
-    })
+        dominio = get_dominio()
 
+        return jsonify({"short_url": f"{dominio}{codigo}"})
+
+    except Exception as e:
+        print("ERRO BACKEND:", str(e))
+        return jsonify({"erro": str(e)}), 500
+    
+    
 # 📊 LISTAR LINKS
 @app.route("/links")
 def listar_links():
